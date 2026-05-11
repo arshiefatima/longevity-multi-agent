@@ -1,87 +1,190 @@
-# Longevity Multi-Agent Pipeline
+# 🧬 Longevity Multi-Agent Pipeline
 
-Monitors the UkhvatNews Telegram channel, parses longevity science articles with AI, and automatically creates structured tasks in ClickUp for your developer and sales teams.
+An autonomous multi-agent AI system that monitors longevity science news from Telegram, parses articles using LLaMA AI, and automatically creates structured tasks in ClickUp for developer and sales teams.
 
-## Quick start
+> Built as a test task for CureForge AI / Longevity InTime — targeting the cure for aging before 2030.
 
-### 1. Install dependencies
+---
+
+## ✅ Connection Test
+
+![Connection Test](screenshot_test.png)
+
+All 3 services connected and verified:
+- ✅ Groq AI (LLaMA 3.3 70B)
+- ✅ ClickUp (connected as Arshie Fatima)
+- ✅ Telegram Bot (@Longevity_recruit_bot)
+
+---
+
+## 🚀 Live Results
+
+![Pipeline Output](screenshot_terminal.png)
+
+| Metric | Result |
+|---|---|
+| Posts processed | 4 articles |
+| ClickUp tasks created | 32 tasks |
+| Investor letters drafted | 10 letters |
+| Pipeline runtime | ~66 seconds |
+
+---
+
+## 📋 ClickUp Tasks Created
+
+![ClickUp Tasks](screenshot_clickup.png)
+
+Tasks automatically routed to the correct department lists:
+- **Developers** → 16 research tasks
+- **Sales** → 12 investor outreach tasks
+- **Other** → 4 general tasks
+
+---
+
+## 🏗️ Architecture
+
+```
+@UkhvatNews (Telegram)
+        ↓
+  Telegram Monitor      ← reads forwarded posts via Bot API
+        ↓
+  Article Parser Agent  ← Groq/LLaMA 3.3 70B extracts structured insights
+        ↓
+  ┌─────┴─────────────────┐
+  │                       │
+Dev Task Agent     Sales/Investor Agent
+  │                       │
+  └──────┬────────────────┘
+         ↓
+   ClickUp Tasks    → Developers / Sales / Other lists
+         +
+   Investor Letters → saved to outputs/letters/
+         +
+   Telegram Status  → summary sent to your Telegram after each run
+```
+
+---
+
+## 🤖 Agents
+
+### 1. Telegram Monitor
+- Reads posts forwarded to the bot via Telegram Bot API
+- Tracks last-seen post IDs to avoid reprocessing
+- Supports daemon mode — polls every 5 minutes automatically
+
+### 2. Article Parser Agent
+- Uses Groq (LLaMA 3.3 70B) to read each longevity article
+- Extracts: title, summary, research tasks, funding opportunities, target organisations, relevant departments
+- Returns structured JSON for downstream agents
+
+### 3. Developer Task Agent
+- Turns research insights into actionable ClickUp tasks
+- Assigns priorities (urgent/high/normal/low) and relevant tags
+- Routes tasks to the Developers list
+
+### 4. Sales / Investor Agent
+- Identifies funding opportunities and target organisations
+- Generates ClickUp tasks for the sales team
+- Drafts personalised outreach emails to investors and grant bodies (up to 3 per article)
+
+### 5. ClickUp Integration
+- Creates tasks in the correct list based on department
+- Uses ClickUp v2 REST API
+- Supports batch task creation with error handling
+
+---
+
+## 🛠️ Tech Stack
+
+- **Python 3.10+**
+- **Groq API** — LLaMA 3.3 70B for AI parsing and task generation
+- **Telegram Bot API** — channel monitoring without user credentials
+- **ClickUp v2 REST API** — task creation across department lists
+- **Pydantic v2** — data validation and settings management
+- **Loguru** — structured logging
+
+---
+
+## ⚙️ Setup
+
+### 1. Clone the repo
+```bash
+git clone https://github.com/arshiefatima/longevity-multi-agent.git
+cd longevity-multi-agent
+```
+
+### 2. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Your .env is already configured
-All your credentials are pre-filled in `.env`. Nothing to change unless you rotate keys.
+### 3. Configure environment
+```bash
+cp .env.example .env
+# Fill in your credentials
+```
 
-### 3. Test all connections
+Required credentials in `.env`:
+```
+GROQ_API_KEY=your_groq_key
+CLICKUP_API_TOKEN=your_clickup_token
+CLICKUP_WORKSPACE_ID=your_workspace_id
+CLICKUP_SPACE_ID=your_space_id
+CLICKUP_LIST_DEVELOPERS=your_dev_list_id
+CLICKUP_LIST_SALES=your_sales_list_id
+CLICKUP_LIST_OTHER=your_other_list_id
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_USER_ID=your_telegram_user_id
+```
+
+### 4. Test connections
 ```bash
 python orchestrator.py --test
 ```
-You should see ✅ for Groq, ClickUp, and Telegram bot.
 
-### 4. Run once (process latest posts right now)
+### 5. Run once
 ```bash
 python orchestrator.py --once
 ```
 
-### 5. Run as a daemon (keeps running, polls every 5 minutes)
+### 6. Run as daemon (every 5 minutes)
 ```bash
 python orchestrator.py
 ```
 
-You'll get a Telegram message from your bot each time it processes new posts.
+---
+
+## 📂 Project Structure
+
+```
+longevity-multi-agent/
+├── orchestrator.py              ← entry point
+├── requirements.txt
+├── config/
+│   └── settings.py              ← environment config
+├── core/
+│   ├── models.py                ← shared Pydantic data models
+│   └── llm.py                   ← Groq LLM client wrapper
+├── agents/
+│   ├── telegram_monitor.py      ← fetches posts from Telegram
+│   ├── article_parser.py        ← AI article parsing
+│   ├── dev_task_agent.py        ← developer task generation
+│   └── sales_investor_agent.py  ← investor outreach + letters
+├── integrations/
+│   └── clickup_client.py        ← ClickUp REST API client
+├── logs/                        ← pipeline.log, errors.log
+└── outputs/
+    └── letters/                 ← drafted investor outreach emails
+```
 
 ---
 
-## What it does
+## 📝 How to Feed Articles
 
-```
-@UkhvatNews channel
-        ↓
-  Telegram monitor  ←── scrapes public channel (no admin needed)
-        ↓                also listens via bot if bot is channel admin
-  Article parser    ←── Groq/LLaMA reads article, extracts structure
-        ↓
-  ┌─────┴──────────────┐
-  │                    │
-Dev task agent    Sales/investor agent
-  │                    │
-  └──────┬─────────────┘
-         ↓
-   ClickUp tasks  ──→  Developers list / Sales list / Other list
-         +
-   Investor letters  ──→  saved to outputs/letters/
-         +
-   Telegram status  ──→  sent to your user ID after each run
-```
+1. Open Telegram and go to **@UkhvatNews**
+2. Long press any post → **Forward** → send to **@Longevity_recruit_bot**
+3. Run `python orchestrator.py --once` or let the daemon pick it up automatically
 
-## Output
+---
 
-**ClickUp tasks** are created in three lists:
-- `901818019610` → Developers (research tasks, technical investigations)
-- `901818019614` → Sales/Investors (outreach tasks, grant applications)
-- `901818019898` → Other (PR, partnerships, legal)
-
-**Investor letters** are saved as `.txt` files in `outputs/letters/`
-
-**Logs** are in `logs/pipeline.log` and `logs/errors.log`
-
-## Telegram bot setup (optional enhancement)
-
-Currently the bot scrapes the public @UkhvatNews channel preview.
-To also receive posts in real-time via the bot:
-
-1. Open Telegram, find your bot
-2. Add it as an admin to the channel you want to monitor
-3. The bot will then also receive updates via `getUpdates`
-
-The bot will always send you status messages after each pipeline run.
-
-## Adjusting behaviour
-
-| What to change | Where |
-|---|---|
-| Poll interval | `POLL_INTERVAL` in `.env` (seconds, default 300) |
-| How far back to look on first run | `LOOKBACK_HOURS` in `.env` |
-| AI model | `GROQ_MODEL` in `.env` |
-| Agent prompts | `SYSTEM_PROMPT` constant in each `agents/*.py` file |
-| Max letters per article | Change `[:3]` in `sales_investor_agent.py` |
+*Built with the goal of accelerating longevity research — finding the cure for aging before 2030.* 🧬
